@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal & Waktu Luang Informatika</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold">HMIF Schedule Dashboard</h1>
+                <p class="text-blue-200 text-sm">Visualisasi Jadwal & Waktu Luang Mahasiswa</p>
+            </div>
+            
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button id="btnJadwal" class="flex-1 sm:flex-none px-4 py-2 bg-white text-blue-700 rounded-lg font-semibold shadow transition-colors" onclick="switchView('jadwal')">
+                    📚 Jadwal Kelas
+                </button>
+                <button id="btnFree" class="flex-1 sm:flex-none px-4 py-2 bg-blue-800 text-blue-100 rounded-lg font-semibold shadow hover:bg-blue-600 transition-colors" onclick="switchView('free')">
+                    ☕ Waktu Luang
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-8 border border-gray-100">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Filter Data</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="angkatanSelect" class="block text-sm font-medium text-gray-600 mb-1">Angkatan</label>
+                    <select id="angkatanSelect" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5 bg-gray-50 border" onchange="updateKelasOptions()">
+                        <option value="2026">Angkatan 2026</option>
+                        <option value="2025">Angkatan 2025</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="kelasSelect" class="block text-sm font-medium text-gray-600 mb-1">Kelas</label>
+                    <select id="kelasSelect" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5 bg-gray-50 border" onchange="renderContent()">
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="contentContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <!-- Cards will be injected here -->
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+            Dibuat untuk mempermudah koordinasi kepanitiaan HMIF.
+        </div>
+    </footer>
+
+    <script>
+        // Data CSV langsung disematkan untuk portabilitas
+        const csvJadwal = `Angkatan,Kelas,Hari,Mulai,Selesai,Mata Kuliah,Kode MK,Ruangan
+2026,S1IF-14-01,Senin,07:30,10:30,Algoritma dan Pemrograman 1,CAK1BAB3,L-MM
+2026,S1IF-14-01,Senin,11:30,13:30,Algoritma dan Pemrograman 1,CAK1BAB3,IOT-102
+2026,S1IF-14-01,Selasa,10:30,12:30,Pendidikan Karakter,CAK1GDB2,REK-401
+2026,S1IF-14-01,Rabu,07:30,10:30,Logika Matematika,CAK1DAB3,REK-303
+2026,S1IF-14-01,Rabu,13:30,16:30,Kalkulus,CAK1CAB3,REK-402
+2026,S1IF-14-01,Kamis,06:30,08:30,Pancasila,UBKXBCB2,REK-401
+2026,S1IF-14-01,Kamis,08:30,10:30,Agama Islam,UAKXACB2,REK-301
+2026,S1IF-14-01,Jumat,07:30,09:30,Statistika,CAK1HDB2,REK-305
+2026,S1IF-14-01,Jumat,11:30,13:30,Agama Katolik,-,REK-203
+2026,S1IF-14-01,Jumat,15:30,18:30,Matematika Diskrit,CAK1EAB3,DC-204
+2026,S1IF-14-02,Senin,07:30,10:30,Matematika Diskrit,CAK1EAB3,-
+2026,S1IF-14-02,Senin,13:30,16:30,Logika Matematika,CAK1DAB3,-
+2026,S1IF-14-02,Selasa,07:30,10:30,Algoritma dan Pemrograman 1,CAK1BAB3,-
+2026,S1IF-14-02,Selasa,11:30,13:30,Algoritma dan Pemrograman 1,CAK1BAB3,-
+2026,S1IF-14-02,Rabu,07:30,09:30,Pendidikan Karakter,CAK1GDB2,-
+2026,S1IF-14-02,Rabu,09:30,11:30,Statistika,CAK1HDB2,-
+2026,S1IF-14-02,Kamis,08:30,10:30,Pancasila,UBKXBCB2,-
+2026,S1IF-14-02,Kamis,10:30,13:30,Kalkulus,CAK1CAB3,-
+2026,S1IF-14-02,Jumat,07:30,09:30,Agama Islam,UAKXACB2,-
+2026,S1IF-14-02,Jumat,11:30,13:30,Agama Kristen,-,-
+2026,S1IF-14-03,Senin,10:30,13:30,Logika Matematika,CAK1DAB3,REK-402
+2026,S1IF-14-03,Selasa,10:30,13:30,Matematika Diskrit,CAK1EAB3,REK-306
+2026,S1IF-14-03,Selasa,13:30,15:30,Pendidikan Karakter,CAK1GDB2,REK-306
+2026,S1IF-14-03,Rabu,07:30,10:30,Algoritma dan Pemrograman 1,CAK1BAB3,L-MM
+2026,S1IF-14-03,Rabu,10:30,12:30,Algoritma dan Pemrograman 1,CAK1BAB3,IOT-102
+2026,S1IF-14-03,Kamis,07:30,10:30,Kalkulus,CAK1CAB3,REK-402
+2026,S1IF-14-03,Kamis,10:30,12:30,Pancasila,UBKXBCB2,REK-401
+2026,S1IF-14-03,Jumat,09:30,11:30,Statistika,CAK1HDB2,REK-305
+2026,S1IF-14-03,Jumat,12:30,14:30,Agama Islam,UAKXACB2,REK-307
+2026,S1IF-14-03,Jumat,13:30,15:30,Agama Kristen,-,DC-302
+2026,S1IF-14-04,Senin,07:30,09:30,Algoritma dan Pemrograman 1,CAK1BAB3,-
+2026,S1IF-14-04,Senin,13:30,16:30,Algoritma dan Pemrograman 1,CAK1BAB3,-
+2026,S1IF-14-04,Selasa,07:30,10:30,Matematika Diskrit,CAK1EAB3,-
+2026,S1IF-14-04,Selasa,13:30,15:30,Pendidikan Karakter,CAK1GDB2,-
+2026,S1IF-14-04,Rabu,07:30,09:30,Statistika,CAK1HDB2,-
+2026,S1IF-14-04,Kamis,06:30,08:30,Agama Islam,UAKXACB2,-
+2026,S1IF-14-04,Kamis,12:30,15:30,Logika Matematika,CAK1DAB3,-
+2026,S1IF-14-04,Jumat,07:30,09:30,Pancasila,UBKXBCB2,-
+2026,S1IF-14-04,Jumat,13:30,16:30,Kalkulus,CAK1CAB3,-
+2026,S1IF-14-05,Senin,10:30,13:30,Kalkulus,-,-
+2026,S1IF-14-05,Senin,13:30,15:30,Pendidikan Karakter,-,-
+2026,S1IF-14-05,Selasa,07:30,09:30,Statistika,-,-
+2026,S1IF-14-05,Selasa,15:30,18:30,Logika Matematika,-,-
+2026,S1IF-14-05,Rabu,07:30,10:30,Matematika Diskrit,-,-
+2026,S1IF-14-05,Kamis,07:30,10:30,Algoritma dan Pemrograman 1,-,-
+2026,S1IF-14-05,Kamis,12:30,14:30,Algoritma dan Pemrograman 1,-,-
+2026,S1IF-14-05,Jumat,09:30,11:30,Pancasila,-,-
+2026,S1IF-14-05,Jumat,14:30,16:30,Agama Islam,-,-
+2026,S1IF-14-06,Senin,07:30,10:30,Kalkulus,CAK1CAB3,REK-401
+2026,S1IF-14-06,Senin,12:30,14:30,Statistika,CAK1HDB2,REK-305
+2026,S1IF-14-06,Selasa,14:30,17:30,Matematika Diskrit,CAK1EAB3,DC-301
+2026,S1IF-14-06,Rabu,07:30,10:30,Algoritma dan Pemrograman 1,CAK1BAB3,L-HP
+2026,S1IF-14-06,Rabu,10:30,12:30,Algoritma dan Pemrograman 1,CAK1BAB3,IOT-202
+2026,S1IF-14-06,Kamis,07:30,10:30,Logika Matematika,CAK1DAB3,REK-307
+2026,S1IF-14-06,Kamis,10:30,12:30,Agama Islam,UAKXACB2,REK-301
+2026,S1IF-14-06,Jumat,07:30,09:30,Pendidikan Karakter,CAK1GDB2,REK-307
+2026,S1IF-14-06,Jumat,16:30,18:30,Pancasila,UBKXBCB2,REK-307
+2025,S1IF-13-01,Senin,11:30,13:30,Sistem Operasi,-,IOT-201
+2025,S1IF-13-01,Senin,13:30,16:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-01,Selasa,10:30,13:30,Struktur Data,-,L-MM
+2025,S1IF-13-01,Selasa,13:30,16:30,Struktur Data,-,IOT-102
+2025,S1IF-13-01,Rabu,10:30,12:30,Analisis Kompleksitas Algoritma,-,REK-303
+2025,S1IF-13-01,Rabu,12:30,15:30,Sistem Basis Data,-,REK-304
+2025,S1IF-13-01,Kamis,09:30,12:30,Analisis dan Perancangan Perangkat Lunak,-,IOT-201
+2025,S1IF-13-01,Jumat,09:30,11:30,Teori Bahasa dan Automata,-,IOT-202
+2025,S1IF-13-01,Jumat,14:30,17:30,Teori Peluang,-,REK-402
+2025,S1IF-13-02,Senin,10:30,13:30,Struktur Data,-,L-MM
+2025,S1IF-13-02,Senin,13:30,16:30,Struktur Data,-,IOT-102
+2025,S1IF-13-02,Selasa,09:30,11:30,Teori Bahasa dan Automata,-,REK-307
+2025,S1IF-13-02,Selasa,13:30,16:30,Teori Peluang,-,IOT-201
+2025,S1IF-13-02,Rabu,09:30,12:30,Sistem Basis Data,-,REK-304
+2025,S1IF-13-02,Rabu,15:30,17:30,Analisis Kompleksitas Algoritma,-,IOT-201
+2025,S1IF-13-02,Kamis,12:30,15:30,Analisis dan Perancangan Perangkat Lunak,-,IOT-201
+2025,S1IF-13-02,Jumat,09:30,11:30,Sistem Operasi,-,IOT-201
+2025,S1IF-13-02,Jumat,15:30,18:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-03,Senin,09:30,12:30,Sistem Basis Data,-,REK-307
+2025,S1IF-13-03,Senin,12:30,14:30,Analisis Kompleksitas Algoritma,-,REK-307
+2025,S1IF-13-03,Selasa,11:30,13:30,Teori Bahasa dan Automata,-,REK-307
+2025,S1IF-13-03,Selasa,15:30,18:30,Teori Peluang,-,REK-304
+2025,S1IF-13-03,Rabu,10:30,13:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-03,Rabu,13:30,15:30,Sistem Operasi,-,IOT-201
+2025,S1IF-13-03,Kamis,09:30,12:30,Struktur Data,-,L-MM
+2025,S1IF-13-03,Kamis,15:30,18:30,Struktur Data,-,IOT-201
+2025,S1IF-13-03,Jumat,15:30,18:30,Analisis dan Perancangan Perangkat Lunak,-,IOT-202
+2025,S1IF-13-04,Senin,09:30,12:30,Analisis dan Perancangan Perangkat Lunak,-,REK-305
+2025,S1IF-13-04,Selasa,13:30,16:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-04,Selasa,16:30,18:30,Sistem Operasi,-,IOT-102
+2025,S1IF-13-04,Rabu,10:30,13:30,Struktur Data,-,L-MM
+2025,S1IF-13-04,Rabu,15:30,18:30,Struktur Data,-,IOT-102
+2025,S1IF-13-04,Kamis,10:30,12:30,Teori Bahasa dan Automata,-,REK-307
+2025,S1IF-13-04,Kamis,15:30,18:30,Teori Peluang,-,REK-306
+2025,S1IF-13-04,Jumat,09:30,11:30,Analisis Kompleksitas Algoritma,-,IOT-102
+2025,S1IF-13-04,Jumat,12:30,15:30,Sistem Basis Data,-,REK-303
+2025,S1IF-13-05,Senin,09:30,11:30,Teori Bahasa dan Automata,-,IOT-202
+2025,S1IF-13-05,Selasa,10:30,13:30,Analisis dan Perancangan Perangkat Lunak,-,REK-305
+2025,S1IF-13-05,Selasa,13:30,15:30,Analisis Kompleksitas Algoritma,-,REK-305
+2025,S1IF-13-05,Rabu,13:30,16:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-05,Rabu,16:30,18:30,Sistem Operasi,-,TEBS_GERL
+2025,S1IF-13-05,Kamis,09:30,12:30,Struktur Data,-,IOT-202
+2025,S1IF-13-05,Kamis,12:30,15:30,Struktur Data,-,L-MM
+2025,S1IF-13-05,Jumat,12:30,15:30,Teori Peluang,-,REK-304
+2025,S1IF-13-05,Jumat,15:30,18:30,Sistem Basis Data,-,REK-303
+2025,S1IF-13-06,Senin,11:30,13:30,Teori Bahasa dan Automata,-,IOT-202
+2025,S1IF-13-06,Senin,14:30,17:30,Sistem Basis Data,-,REK-305
+2025,S1IF-13-06,Selasa,10:30,13:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-06,Selasa,15:30,17:30,Sistem Operasi,-,IOT-202
+2025,S1IF-13-06,Rabu,09:30,12:30,Struktur Data,-,REK-307
+2025,S1IF-13-06,Rabu,13:30,16:30,Struktur Data,-,L-MM
+2025,S1IF-13-06,Kamis,09:30,12:30,Analisis dan Perancangan Perangkat Lunak,-,IOT-102
+2025,S1IF-13-06,Kamis,14:30,16:30,Analisis Kompleksitas Algoritma,-,IOT-202
+2025,S1IF-13-06,Jumat,15:30,18:30,Teori Peluang,-,REK-304
+2025,S1IF-13-07,Senin,10:30,13:30,Sistem Operasi,-,L-HP
+2025,S1IF-13-07,Senin,13:30,15:30,Sistem Operasi,-,IOT-202
+2025,S1IF-13-07,Selasa,09:30,12:30,Struktur Data,-,IOT-202
+2025,S1IF-13-07,Selasa,13:30,16:30,Struktur Data,-,L-MM
+2025,S1IF-13-07,Rabu,11:30,13:30,Analisis Kompleksitas Algoritma,-,REK-305
+2025,S1IF-13-07,Rabu,16:30,18:30,Teori Bahasa dan Automata,-,REK-402
+2025,S1IF-13-07,Kamis,09:30,12:30,Sistem Basis Data,-,REK-306
+2025,S1IF-13-07,Kamis,12:30,15:30,Analisis dan Perancangan Perangkat Lunak,-,IOT-102
+2025,S1IF-13-07,Jumat,12:30,15:30,Teori Peluang,-,DC-204`;
+
+        const csvWaktuLuang = `Angkatan,Kelas,Hari,Mulai Free,Selesai Free
+2026,S1IF-14-01,Senin,10:30,11:30
+2026,S1IF-14-01,Senin,13:30,17:00
+2026,S1IF-14-01,Selasa,08:00,10:30
+2026,S1IF-14-01,Selasa,12:30,17:00
+2026,S1IF-14-01,Rabu,10:30,13:30
+2026,S1IF-14-01,Rabu,16:30,17:00
+2026,S1IF-14-01,Kamis,10:30,17:00
+2026,S1IF-14-01,Jumat,09:30,11:30
+2026,S1IF-14-01,Jumat,13:30,15:30
+2026,S1IF-14-02,Senin,10:30,13:30
+2026,S1IF-14-02,Senin,16:30,17:00
+2026,S1IF-14-02,Selasa,13:30,17:00
+2026,S1IF-14-02,Rabu,11:30,17:00
+2026,S1IF-14-02,Kamis,08:00,08:30
+2026,S1IF-14-02,Kamis,13:30,17:00
+2026,S1IF-14-02,Jumat,09:30,11:30
+2026,S1IF-14-02,Jumat,13:30,17:00
+2026,S1IF-14-03,Senin,08:00,10:30
+2026,S1IF-14-03,Senin,13:30,17:00
+2026,S1IF-14-03,Selasa,08:00,10:30
+2026,S1IF-14-03,Selasa,15:30,17:00
+2026,S1IF-14-03,Rabu,12:30,17:00
+2026,S1IF-14-03,Kamis,12:30,17:00
+2026,S1IF-14-03,Jumat,08:00,09:30
+2026,S1IF-14-03,Jumat,11:30,12:30
+2026,S1IF-14-03,Jumat,15:30,17:00
+2026,S1IF-14-04,Senin,09:30,13:30
+2026,S1IF-14-04,Senin,16:30,17:00
+2026,S1IF-14-04,Selasa,10:30,13:30
+2026,S1IF-14-04,Selasa,15:30,17:00
+2026,S1IF-14-04,Rabu,09:30,17:00
+2026,S1IF-14-04,Kamis,08:30,12:30
+2026,S1IF-14-04,Kamis,15:30,17:00
+2026,S1IF-14-04,Jumat,09:30,13:30
+2026,S1IF-14-04,Jumat,16:30,17:00
+2026,S1IF-14-05,Senin,08:00,10:30
+2026,S1IF-14-05,Senin,15:30,17:00
+2026,S1IF-14-05,Selasa,09:30,15:30
+2026,S1IF-14-05,Rabu,10:30,17:00
+2026,S1IF-14-05,Kamis,10:30,12:30
+2026,S1IF-14-05,Kamis,14:30,17:00
+2026,S1IF-14-05,Jumat,08:00,09:30
+2026,S1IF-14-05,Jumat,11:30,14:30
+2026,S1IF-14-05,Jumat,16:30,17:00
+2026,S1IF-14-06,Senin,10:30,12:30
+2026,S1IF-14-06,Senin,14:30,17:00
+2026,S1IF-14-06,Selasa,08:00,14:30
+2026,S1IF-14-06,Rabu,12:30,17:00
+2026,S1IF-14-06,Kamis,12:30,17:00
+2026,S1IF-14-06,Jumat,09:30,16:30
+2025,S1IF-13-01,Senin,08:00,11:30
+2025,S1IF-13-01,Senin,16:30,17:00
+2025,S1IF-13-01,Selasa,08:00,10:30
+2025,S1IF-13-01,Selasa,16:30,17:00
+2025,S1IF-13-01,Rabu,08:00,10:30
+2025,S1IF-13-01,Rabu,15:30,17:00
+2025,S1IF-13-01,Kamis,08:00,09:30
+2025,S1IF-13-01,Kamis,12:30,17:00
+2025,S1IF-13-01,Jumat,08:00,09:30
+2025,S1IF-13-01,Jumat,11:30,14:30
+2025,S1IF-13-02,Senin,08:00,10:30
+2025,S1IF-13-02,Senin,16:30,17:00
+2025,S1IF-13-02,Selasa,08:00,09:30
+2025,S1IF-13-02,Selasa,11:30,13:30
+2025,S1IF-13-02,Selasa,16:30,17:00
+2025,S1IF-13-02,Rabu,08:00,09:30
+2025,S1IF-13-02,Rabu,12:30,15:30
+2025,S1IF-13-02,Kamis,08:00,12:30
+2025,S1IF-13-02,Kamis,15:30,17:00
+2025,S1IF-13-02,Jumat,08:00,09:30
+2025,S1IF-13-02,Jumat,11:30,15:30
+2025,S1IF-13-03,Senin,08:00,09:30
+2025,S1IF-13-03,Senin,14:30,17:00
+2025,S1IF-13-03,Selasa,08:00,11:30
+2025,S1IF-13-03,Selasa,13:30,15:30
+2025,S1IF-13-03,Rabu,08:00,10:30
+2025,S1IF-13-03,Rabu,15:30,17:00
+2025,S1IF-13-03,Kamis,08:00,09:30
+2025,S1IF-13-03,Kamis,12:30,15:30
+2025,S1IF-13-03,Jumat,08:00,15:30
+2025,S1IF-13-04,Senin,08:00,09:30
+2025,S1IF-13-04,Senin,12:30,17:00
+2025,S1IF-13-04,Selasa,08:00,13:30
+2025,S1IF-13-04,Rabu,08:00,10:30
+2025,S1IF-13-04,Rabu,13:30,15:30
+2025,S1IF-13-04,Kamis,08:00,10:30
+2025,S1IF-13-04,Kamis,12:30,15:30
+2025,S1IF-13-04,Jumat,08:00,09:30
+2025,S1IF-13-04,Jumat,11:30,12:30
+2025,S1IF-13-04,Jumat,15:30,17:00
+2025,S1IF-13-05,Senin,08:00,09:30
+2025,S1IF-13-05,Senin,11:30,17:00
+2025,S1IF-13-05,Selasa,08:00,10:30
+2025,S1IF-13-05,Selasa,15:30,17:00
+2025,S1IF-13-05,Rabu,08:00,13:30
+2025,S1IF-13-05,Kamis,08:00,09:30
+2025,S1IF-13-05,Kamis,15:30,17:00
+2025,S1IF-13-05,Jumat,08:00,12:30
+2025,S1IF-13-06,Senin,08:00,11:30
+2025,S1IF-13-06,Senin,13:30,14:30
+2025,S1IF-13-06,Selasa,08:00,10:30
+2025,S1IF-13-06,Selasa,13:30,15:30
+2025,S1IF-13-06,Rabu,08:00,09:30
+2025,S1IF-13-06,Rabu,12:30,13:30
+2025,S1IF-13-06,Rabu,16:30,17:00
+2025,S1IF-13-06,Kamis,08:00,09:30
+2025,S1IF-13-06,Kamis,12:30,14:30
+2025,S1IF-13-06,Kamis,16:30,17:00
+2025,S1IF-13-06,Jumat,08:00,15:30
+2025,S1IF-13-07,Senin,08:00,10:30
+2025,S1IF-13-07,Senin,15:30,17:00
+2025,S1IF-13-07,Selasa,08:00,09:30
+2025,S1IF-13-07,Selasa,12:30,13:30
+2025,S1IF-13-07,Selasa,16:30,17:00
+2025,S1IF-13-07,Rabu,08:00,11:30
+2025,S1IF-13-07,Rabu,13:30,16:30
+2025,S1IF-13-07,Kamis,08:00,09:30
+2025,S1IF-13-07,Kamis,15:30,17:00
+2025,S1IF-13-07,Jumat,08:00,12:30
+2025,S1IF-13-07,Jumat,15:30,17:00`;
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                let obj = {};
+                headers.forEach((h, i) => obj[h.trim()] = values[i] ? values[i].trim() : '-');
+                return obj;
+            });
+        }
+
+        const dataJadwal = parseCSV(csvJadwal);
+        const dataWaktuLuang = parseCSV(csvWaktuLuang);
+        
+        const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+        let currentMode = 'jadwal'; // 'jadwal' or 'free'
+
+        function switchView(mode) {
+            currentMode = mode;
+            
+            const btnJadwal = document.getElementById('btnJadwal');
+            const btnFree = document.getElementById('btnFree');
+            
+            if (mode === 'jadwal') {
+                btnJadwal.classList.replace('bg-blue-800', 'bg-white');
+                btnJadwal.classList.replace('text-blue-100', 'text-blue-700');
+                btnJadwal.classList.remove('hover:bg-blue-600');
+                
+                btnFree.classList.replace('bg-white', 'bg-blue-800');
+                btnFree.classList.replace('text-blue-700', 'text-blue-100');
+                btnFree.classList.add('hover:bg-blue-600');
+            } else {
+                btnFree.classList.replace('bg-blue-800', 'bg-white');
+                btnFree.classList.replace('text-blue-100', 'text-blue-700');
+                btnFree.classList.remove('hover:bg-blue-600');
+                
+                btnJadwal.classList.replace('bg-white', 'bg-blue-800');
+                btnJadwal.classList.replace('text-blue-700', 'text-blue-100');
+                btnJadwal.classList.add('hover:bg-blue-600');
+            }
+            
+            renderContent();
+        }
+
+        function updateKelasOptions() {
+            const angkatan = document.getElementById('angkatanSelect').value;
+            const kelasSelect = document.getElementById('kelasSelect');
+            kelasSelect.innerHTML = ''; // Clear previous
+            
+            // Extract unique class names for selected Angkatan
+            const classSet = new Set();
+            dataJadwal.forEach(row => {
+                if(row.Angkatan === angkatan) classSet.add(row.Kelas);
+            });
+            
+            Array.from(classSet).sort().forEach(cls => {
+                const opt = document.createElement('option');
+                opt.value = cls;
+                opt.textContent = cls;
+                kelasSelect.appendChild(opt);
+            });
+            
+            renderContent();
+        }
+
+        function renderContent() {
+            const container = document.getElementById('contentContainer');
+            container.innerHTML = '';
+            
+            const angkatan = document.getElementById('angkatanSelect').value;
+            const kelas = document.getElementById('kelasSelect').value;
+            
+            const dataSource = currentMode === 'jadwal' ? dataJadwal : dataWaktuLuang;
+            
+            // Filter Data for specific class
+            const filtered = dataSource.filter(row => row.Angkatan === angkatan && row.Kelas === kelas);
+            
+            days.forEach(day => {
+                const dayData = filtered.filter(row => row.Hari.toLowerCase() === day.toLowerCase());
+                
+                // Sort by Start time
+                dayData.sort((a, b) => {
+                    const timeA = a.Mulai || a['Mulai Free'];
+                    const timeB = b.Mulai || b['Mulai Free'];
+                    return timeA.localeCompare(timeB);
+                });
+
+                // Create Card element
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden transition-all hover:shadow-md";
+                
+                // Card Header (Day)
+                const headerColor = currentMode === 'jadwal' ? 'bg-blue-50 text-blue-800 border-blue-100' : 'bg-green-50 text-green-800 border-green-100';
+                card.innerHTML = `
+                    <div class="px-4 py-3 border-b font-bold ${headerColor}">
+                        ${day}
+                    </div>
+                `;
+                
+                // Card Body (Items)
+                const list = document.createElement('div');
+                list.className = "p-0 flex-grow divide-y divide-gray-50";
+                
+                if (dayData.length === 0) {
+                    list.innerHTML = `<div class="p-4 text-center text-sm text-gray-400 italic">Tidak ada data</div>`;
+                } else {
+                    dayData.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = "p-4 hover:bg-gray-50 transition-colors";
+                        
+                        if (currentMode === 'jadwal') {
+                            div.innerHTML = `
+                                <div class="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    ${item.Mulai} - ${item.Selesai} WIB
+                                </div>
+                                <div class="font-medium text-gray-800 leading-tight mb-2">${item['Mata Kuliah']}</div>
+                                <div class="flex flex-wrap gap-2 text-xs">
+                                    ${item['Kode MK'] !== '-' ? `<span class="bg-gray-100 text-gray-600 px-2 py-1 rounded border">${item['Kode MK']}</span>` : ''}
+                                    ${item['Ruangan'] !== '-' ? `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>${item['Ruangan']}</span>` : ''}
+                                </div>
+                            `;
+                        } else {
+                            div.innerHTML = `
+                                <div class="font-bold text-green-600 text-lg flex items-center gap-2">
+                                   <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                   ${item['Mulai Free']} - ${item['Selesai Free']}
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">Status: Kosong / Waktu Luang</div>
+                            `;
+                        }
+                        list.appendChild(div);
+                    });
+                }
+                
+                card.appendChild(list);
+                container.appendChild(card);
+            });
+        }
+
+        window.onload = () => {
+            updateKelasOptions(); 
+            // renderContent dipanggil otomatis di akhir updateKelasOptions
+        };
+    </script>
+</body>
+</html>
